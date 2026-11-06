@@ -102,6 +102,12 @@ This prototype provides a practical foundation for further research and developm
 
 The project will be progressively improved through mathematical modeling, simulation, hardware experiments, and performance evaluation.
 
+## 10. AGV Demonstration Video
+
+Watch the three-wheel AGV prototype in operation:
+
+[Watch AGV Demonstration on YouTube](https://youtu.be/_m0BC94dcjY?si=p_J5lVcKwSrPkRpP)
+
 ---
 
 **Author:** Huy Pham
