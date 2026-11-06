@@ -1,58 +1,61 @@
 
-/*
-================================================
-       AGV 3 BANH
-       ARDUINO UNO + L298N + HC-SR04
-================================================
+// =================================================
+//       THREE-WHEEL AGV
+//       ARDUINO UNO + L298N + HC-SR04
+// =================================================
+//
+// Functions:
+// 1. Automatic forward movement.
+// 2. Distance measurement using an ultrasonic sensor.
+// 3. When an obstacle is detected within 25 cm:
+//    - Stop the vehicle.
+//    - Move backward.
+//    - Turn right.
+// 4. Resume forward movement.
+//
+// Both motors use the same PWM speed value.
+// =================================================
 
-Chuc nang:
-1. Tu dong di thang.
-2. Do khoang cach bang cam bien sieu am.
-3. Gap vat can duoi 25cm:
-   - Dung xe.
-   - Lui lai.
-   - Quay phai.
-4. Tiep tuc di chuyen.
-
-Hai dong co su dung cung muc PWM.
-*/
 
 // ================================================
-// 1. KHAI BAO CHAN L298N
+// 1. L298N MOTOR DRIVER PIN CONFIGURATION
 // ================================================
 
-// Dong co trai - Kenh A
+// Left motor - Channel A
 #define ENA 3
 #define IN1 5
 #define IN2 6
 
-// Dong co phai - Kenh B
+// Right motor - Channel B
 #define ENB 11
 #define IN3 9
 #define IN4 10
 
+
 // ================================================
-// 2. KHAI BAO CAM BIEN HC-SR04
+// 2. HC-SR04 ULTRASONIC SENSOR PIN CONFIGURATION
 // ================================================
 
 #define TRIG 7
 #define ECHO 4
 
+
 // ================================================
-// 3. CAU HINH AGV
+// 3. AGV CONFIGURATION
 // ================================================
 
-// Toc do chung cua hai dong co
-int tocDoTien = 180;
-int tocDoLui = 160;
-int tocDoQuay = 180;
+// Motor speed settings
+int forwardSpeed = 180;
+int backwardSpeed = 160;
+int turningSpeed = 180;
 
-// Nguong phat hien vat can
-int nguongVatCan = 25;
+// Obstacle detection threshold (cm)
+int obstacleThreshold = 25;
 
-// Thoi gian lui va quay
-int thoiGianLui = 350;
-int thoiGianQuay = 400;
+// Movement duration (milliseconds)
+int backwardDuration = 350;
+int turningDuration = 400;
+
 
 // ================================================
 // 4. SETUP
@@ -60,35 +63,37 @@ int thoiGianQuay = 400;
 
 void setup() {
 
-  // Cau hinh chan dong co trai
+  // Configure left motor pins
   pinMode(ENA, OUTPUT);
   pinMode(IN1, OUTPUT);
   pinMode(IN2, OUTPUT);
 
-  // Cau hinh chan dong co phai
+  // Configure right motor pins
   pinMode(ENB, OUTPUT);
   pinMode(IN3, OUTPUT);
   pinMode(IN4, OUTPUT);
 
-  // Cau hinh cam bien sieu am
+  // Configure ultrasonic sensor pins
   pinMode(TRIG, OUTPUT);
   pinMode(ECHO, INPUT);
 
-  // Serial Monitor
+  // Initialize Serial Monitor
   Serial.begin(9600);
 
-  // Dung xe khi khoi dong
-  dungXe();
+  // Stop the vehicle at startup
+  stopMotors();
 
-  Serial.println("AGV DA KHOI DONG!");
+  Serial.println("AGV SYSTEM INITIALIZED!");
+
   delay(1000);
 }
 
+
 // ================================================
-// 5. HAM DO KHOANG CACH
+// 5. DISTANCE MEASUREMENT FUNCTION
 // ================================================
 
-float doKhoangCach() {
+float measureDistance() {
 
   digitalWrite(TRIG, LOW);
   delayMicroseconds(2);
@@ -98,103 +103,109 @@ float doKhoangCach() {
 
   digitalWrite(TRIG, LOW);
 
-  // Doc thoi gian phan hoi
-  long thoiGian = pulseIn(ECHO, HIGH, 25000UL);
+  // Measure the ultrasonic echo duration
+  long duration = pulseIn(ECHO, HIGH, 25000UL);
 
-  // Khong nhan duoc phan hoi:
-  // Xem nhu khong co vat can trong tam do
-  if (thoiGian == 0) {
+  // If no echo is received,
+  // assume there is no obstacle within the detection range
+  if (duration == 0) {
     return 400;
   }
 
-  // Tinh khoang cach centimet
-  float khoangCach = thoiGian * 0.0343 / 2;
+  // Calculate distance in centimeters
+  float distance = duration * 0.0343 / 2;
 
-  return khoangCach;
+  return distance;
 }
 
+
 // ================================================
-// 6. HAM DI CHUYEN TIEN
+// 6. FORWARD MOVEMENT FUNCTION
 // ================================================
 
-void tien() {
+void moveForward() {
 
-  // Hai dong co cung chieu tien
+  // Set both motors to forward direction
   digitalWrite(IN1, HIGH);
   digitalWrite(IN2, LOW);
 
   digitalWrite(IN3, HIGH);
   digitalWrite(IN4, LOW);
 
-  // Hai banh nhan cung toc do PWM
-  analogWrite(ENA, tocDoTien);
-  analogWrite(ENB, tocDoTien);
+  // Apply the same PWM speed to both motors
+  analogWrite(ENA, forwardSpeed);
+  analogWrite(ENB, forwardSpeed);
 
 }
 
+
 // ================================================
-// 7. HAM DI CHUYEN LUI
+// 7. BACKWARD MOVEMENT FUNCTION
 // ================================================
 
-void lui() {
+void moveBackward() {
 
-  // Hai dong co cung chieu lui
+  // Set both motors to backward direction
   digitalWrite(IN1, LOW);
   digitalWrite(IN2, HIGH);
 
   digitalWrite(IN3, LOW);
   digitalWrite(IN4, HIGH);
 
-  // Hai banh nhan cung toc do PWM
-  analogWrite(ENA, tocDoLui);
-  analogWrite(ENB, tocDoLui);
+  // Apply the same PWM speed to both motors
+  analogWrite(ENA, backwardSpeed);
+  analogWrite(ENB, backwardSpeed);
 
 }
 
+
 // ================================================
-// 8. HAM QUAY PHAI
+// 8. TURN RIGHT FUNCTION
 // ================================================
 
-void quayPhai() {
+void turnRight() {
 
-  // Banh trai tien
+  // Left motor moves forward
   digitalWrite(IN1, HIGH);
   digitalWrite(IN2, LOW);
 
-  // Banh phai lui
+  // Right motor moves backward
   digitalWrite(IN3, LOW);
   digitalWrite(IN4, HIGH);
 
-  analogWrite(ENA, tocDoQuay);
-  analogWrite(ENB, tocDoQuay);
+  analogWrite(ENA, turningSpeed);
+  analogWrite(ENB, turningSpeed);
 
 }
 
+
 // ================================================
-// 9. HAM QUAY TRAI
+// 9. TURN LEFT FUNCTION
 // ================================================
 
-void quayTrai() {
+void turnLeft() {
 
-  // Banh trai lui
+  // Left motor moves backward
   digitalWrite(IN1, LOW);
   digitalWrite(IN2, HIGH);
 
-  // Banh phai tien
+  // Right motor moves forward
   digitalWrite(IN3, HIGH);
   digitalWrite(IN4, LOW);
 
-  analogWrite(ENA, tocDoQuay);
-  analogWrite(ENB, tocDoQuay);
+  analogWrite(ENA, turningSpeed);
+  analogWrite(ENB, turningSpeed);
 
 }
 
+
 // ================================================
-// 10. HAM DUNG XE
+// 10. STOP FUNCTION
 // ================================================
 
-void dungXe() {
+void stopMotors() {
 
+  // Stop both motors
   analogWrite(ENA, 0);
   analogWrite(ENB, 0);
 
@@ -206,67 +217,69 @@ void dungXe() {
 
 }
 
+
 // ================================================
-// 11. HAM TRANH VAT CAN
+// 11. OBSTACLE AVOIDANCE FUNCTION
 // ================================================
 
-void tranhVatCan() {
+void avoidObstacle() {
 
-  Serial.println("PHAT HIEN VAT CAN!");
+  Serial.println("OBSTACLE DETECTED!");
 
-  // Giai doan 1: Dung xe
-  dungXe();
+  // Step 1: Stop the vehicle
+  stopMotors();
   delay(200);
 
-  // Giai doan 2: Lui lai
-  Serial.println("AGV DANG LUI");
+  // Step 2: Move backward
+  Serial.println("MOVING BACKWARD...");
 
-  lui();
-  delay(thoiGianLui);
+  moveBackward();
+  delay(backwardDuration);
 
-  // Giai doan 3: Dung lai
-  dungXe();
+  // Step 3: Stop the vehicle
+  stopMotors();
   delay(200);
 
-  // Giai doan 4: Quay phai
-  Serial.println("AGV DANG QUAY PHAI");
+  // Step 4: Turn right
+  Serial.println("TURNING RIGHT...");
 
-  quayPhai();
-  delay(thoiGianQuay);
+  turnRight();
+  delay(turningDuration);
 
-  // Giai doan 5: Dung lai
-  dungXe();
+  // Step 5: Stop after turning
+  stopMotors();
   delay(200);
 
 }
 
+
 // ================================================
-// 12. CHUONG TRINH CHINH
+// 12. MAIN PROGRAM
 // ================================================
 
 void loop() {
 
-  // Doc khoang cach
-  float kc = doKhoangCach();
+  // Measure the distance to the obstacle
+  float distance = measureDistance();
 
-  Serial.print("Khoang cach vat can: ");
-  Serial.print(kc);
+  Serial.print("Obstacle Distance: ");
+  Serial.print(distance);
   Serial.println(" cm");
 
-  // Kiem tra vat can
-  if (kc > nguongVatCan) {
+  // Check whether the path is clear
+  if (distance > obstacleThreshold) {
 
-    // Khong co vat can gan
-    Serial.println("AGV DANG DI THANG");
+    // No obstacle detected within the threshold
+    Serial.println("AGV MOVING FORWARD");
 
-    tien();
+    moveForward();
 
   }
 
   else {
 
-    // Co vat can
-    tranhVatCan();
+    // An obstacle has been detected
+    avoidObstacle();
 
   }
 
